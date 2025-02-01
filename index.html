@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AeroCalc Pro - RC Aircraft Designer</title>
+    <title>AeroCalc Pro - Secure RC Designer</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
     <style>
         :root {
@@ -26,15 +26,18 @@
             grid-template-columns: 320px 1fr;
             gap: 30px;
         }
-        .sidebar {
+        .auth-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background: #2d2d2d;
-            padding: 20px;
-            border-radius: 8px;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
         }
-        .main-content {
-            background: #262626;
-            padding: 20px;
-            border-radius: 8px;
+        .main-app {
+            display: none;
         }
         .input-group {
             margin: 15px 0;
@@ -99,7 +102,19 @@
 </head>
 <body>
     <div id="loading">Initializing Aerocalc Engine...</div>
-    <div class="container">
+    
+    <!-- Authentication Container -->
+    <div class="auth-container" id="authContainer">
+        <h2 style="color: var(--primary);">AeroCalc Pro Access</h2>
+        <div class="input-group">
+            <input type="password" id="accessKey" placeholder="Enter Access Code">
+        </div>
+        <button onclick="checkAuth()">Unlock System</button>
+        <div id="authError" class="error-message"></div>
+    </div>
+
+    <!-- Main Application -->
+    <div class="container main-app" id="mainApp">
         <div class="sidebar">
             <h2 style="color: var(--primary);">Design Parameters</h2>
             
@@ -135,7 +150,8 @@
             </div>
 
             <button onclick="calculate()" id="calcBtn">Calculate Performance</button>
-            <div id="errorMessage" class="error-message"></div>
+            <button onclick="logout()" style="background: var(--danger); margin-top: 20px;">Logout</button>
+            <div id="calcError" class="error-message"></div>
         </div>
 
         <div class="main-content">
@@ -162,9 +178,32 @@
     </div>
 
 <script>
+const AUTH_PASSWORD = "Dodrcalc";
 let pyodide;
 let pyodideReady = false;
 
+// Authentication Functions
+function checkAuth() {
+    const input = document.getElementById('accessKey').value.trim();
+    const errorDiv = document.getElementById('authError');
+    
+    if(input === AUTH_PASSWORD) {
+        localStorage.setItem('aeroAuth', 'true');
+        document.getElementById('authContainer').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'grid';
+        initializePyodide();
+    } else {
+        errorDiv.textContent = "Invalid access code!";
+        setTimeout(() => errorDiv.textContent = "", 2000);
+    }
+}
+
+function logout() {
+    localStorage.removeItem('aeroAuth');
+    window.location.reload();
+}
+
+// Pyodide Initialization
 async function initializePyodide() {
     try {
         showLoading();
@@ -179,6 +218,7 @@ async function initializePyodide() {
     }
 }
 
+// Calculation Functions
 async function calculate() {
     if (!pyodideReady) {
         showError("Calculation engine still loading...");
@@ -283,13 +323,13 @@ async function performCalculations(inputs) {
             '''
 
         except Exception as e:
-            document.getElementById("errorMessage").textContent = f"Error: {str(e)}"
+            document.getElementById("calcError").textContent = f"Calculation error: {str(e)}"
     `);
     
     hideLoading();
 }
 
-// UI Functions
+// UI Helpers
 function showLoading() {
     document.getElementById('loading').style.display = 'block';
 }
@@ -304,17 +344,20 @@ function clearResults() {
 }
 
 function clearErrors() {
-    document.getElementById('errorMessage').textContent = '';
+    document.getElementById('calcError').textContent = '';
 }
 
 function showError(message) {
-    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('calcError').textContent = message;
 }
 
-// Initialize
+// Initialization
 window.addEventListener('load', () => {
-    document.getElementById('calcBtn').disabled = true;
-    initializePyodide();
+    if(localStorage.getItem('aeroAuth') === 'true') {
+        document.getElementById('authContainer').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'grid';
+        initializePyodide();
+    }
 });
 </script>
 </body>
